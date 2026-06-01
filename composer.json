@@ -5,7 +5,7 @@
     "license": "GPL-3.0-or-later",
     "require": {
         "php": ">=7.4",
-        "yahnis-elsts/plugin-update-checker": "~5.3.0"
+        "yahnis-elsts/plugin-update-checker": "^5.3"
     },
     "autoload": {
         "files": [

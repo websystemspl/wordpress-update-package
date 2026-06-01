@@ -17,7 +17,6 @@ use DateTimeZone;
 use WP_Error;
 use RuntimeException;
 use stdClass;
-use YahnisElsts\PluginUpdateChecker\v5p3\PucFactory;
 
 /* ================================================================================================ */
 /*                                     UpdatePulse Updater                                          */
@@ -133,11 +132,18 @@ if ( ! class_exists( __NAMESPACE__ . '\UpdatePulse_Updater' ) ) {
 				. '?action=get_metadata&package_id=';
 			$metadata_url           .= rawurlencode( $this->package_slug );
 
-			if ( ! class_exists( 'YahnisElsts\PluginUpdateChecker\v5p3\PucFactory' ) ) {
+			if (
+				! class_exists( 'YahnisElsts\PluginUpdateChecker\v5p3\PucFactory' ) &&
+				! class_exists( 'YahnisElsts\PluginUpdateChecker\v5p7\PucFactory' )
+			) {
 				require dirname( __DIR__, 3 ) . '/yahnis-elsts/plugin-update-checker/plugin-update-checker.php';
 			}
 
-			$this->update_checker = PucFactory::buildUpdateChecker( $metadata_url, $package_file_path );
+			$puc_factory = class_exists( 'YahnisElsts\PluginUpdateChecker\v5p7\PucFactory' )
+				? 'YahnisElsts\PluginUpdateChecker\v5p7\PucFactory'
+				: 'YahnisElsts\PluginUpdateChecker\v5p3\PucFactory';
+
+			$this->update_checker = $puc_factory::buildUpdateChecker( $metadata_url, $package_file_path );
 
 			$this->update_checker->addQueryArgFilter( array( $this, 'filter_update_checks' ) );
 
