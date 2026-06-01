@@ -671,158 +671,60 @@ if ( ! class_exists( __NAMESPACE__ . '\UpdatePulse_Updater' ) ) {
 		}
 
 		protected function get_option( $option, $other_package_slug = false ) {
-			global $wp_filesystem;
 
-			if ( ! isset( $wp_filesystem ) ) {
-				include_once ABSPATH . 'wp-admin/includes/file.php';
+			// 'server' is deployment config — always read from updatepulse.json
+			if ( 'server' === $option && ! $other_package_slug ) {
+				if ( ! isset( $this->json_options ) ) {
+					global $wp_filesystem;
 
-				WP_Filesystem();
-			}
+					if ( ! isset( $wp_filesystem ) ) {
+						include_once ABSPATH . 'wp-admin/includes/file.php';
 
-			if ( $other_package_slug && $this->package_path ) {
-				$parts           = explode( '/', untrailingslashit( $this->package_path ) );
-				$index           = count( $parts ) - 1;
-				$parts[ $index ] = $other_package_slug;
-				$package_path    = trailingslashit( implode( '/', $package_path ) );
-
-				if ( $wp_filesystem->exists( $package_path . 'updatepulse.json' ) ) {
-					$updatepulse_json = $wp_filesystem->get_contents( $package_path . 'updatepulse.json' );
-				}
-
-				if ( $updatepulse_json ) {
-					$json_options = json_decode( $updatepulse_json, true );
-
-					if ( isset( $json_options[ $option ] ) ) {
-						return $json_options[ $option ];
+						WP_Filesystem();
 					}
-				}
-			} else {
 
-				if (
-					$this->package_path &&
-					! isset( $this->json_options ) &&
-					$wp_filesystem->exists( $this->package_path . 'updatepulse.json' )
-				) {
-					$updatepulse_json = $wp_filesystem->get_contents( $this->package_path . 'updatepulse.json' );
+					if ( $wp_filesystem->exists( $this->package_path . 'updatepulse.json' ) ) {
+						$updatepulse_json = $wp_filesystem->get_contents( $this->package_path . 'updatepulse.json' );
 
-					if ( $updatepulse_json ) {
-						$this->json_options = json_decode( $updatepulse_json, true );
+						if ( $updatepulse_json ) {
+							$this->json_options = json_decode( $updatepulse_json, true );
+						}
 					}
 				}
 
-				if ( isset( $this->json_options[ $option ] ) ) {
-					return $this->json_options[ $option ];
-				}
+				return isset( $this->json_options['server'] ) ? $this->json_options['server'] : '';
 			}
 
-			return '';
+			// All other options are stored in wp_options
+			$db_slug    = $other_package_slug ? $other_package_slug : $this->package_slug;
+			$db_options = get_option( 'updatepulse_' . $db_slug . '_options', array() );
+
+			return isset( $db_options[ $option ] ) ? $db_options[ $option ] : '';
 		}
 
 		protected function update_option( $option, $value ) {
-			global $wp_filesystem;
+			$db_options            = get_option( 'updatepulse_' . $this->package_slug . '_options', array() );
+			$db_options[ $option ] = $value;
 
-			if ( ! isset( $wp_filesystem ) ) {
-				include_once ABSPATH . 'wp-admin/includes/file.php';
-
-				WP_Filesystem();
-			}
-
-			if ( ! isset( $this->json_options ) ) {
-				$updatepulse_json = $wp_filesystem->get_contents( $this->package_path . 'updatepulse.json' );
-
-				if ( $updatepulse_json ) {
-					$this->json_options = json_decode( $updatepulse_json, true );
-				}
-			}
-
-			$this->json_options[ $option ] = $value;
-			$updatepulse_json              = wp_json_encode(
-				$this->json_options,
-				JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-			);
-
-			$wp_filesystem->put_contents( $this->package_path . 'updatepulse.json', $updatepulse_json, FS_CHMOD_FILE );
+			update_option( 'updatepulse_' . $this->package_slug . '_options', $db_options );
 		}
 
 		protected function delete_option( $option ) {
-			global $wp_filesystem;
+			$db_options = get_option( 'updatepulse_' . $this->package_slug . '_options', array() );
 
-			if ( ! isset( $wp_filesystem ) ) {
-				include_once ABSPATH . 'wp-admin/includes/file.php';
+			if ( isset( $db_options[ $option ] ) ) {
+				unset( $db_options[ $option ] );
 
-				WP_Filesystem();
-			}
-
-			if ( ! isset( $this->json_options ) ) {
-				$updatepulse_json = $wp_filesystem->get_contents( $this->package_path . 'updatepulse.json' );
-
-				if ( $updatepulse_json ) {
-					$this->json_options = json_decode( $updatepulse_json, true );
-				}
-			}
-
-			if ( isset( $this->json_options[ $option ] ) ) {
-				unset( $this->json_options[ $option ] );
-
-				$updatepulse_json = wp_json_encode(
-					$this->json_options,
-					JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-				);
-
-				$wp_filesystem->put_contents(
-					$this->package_path . 'updatepulse.json',
-					$updatepulse_json,
-					FS_CHMOD_FILE
-				);
+				update_option( 'updatepulse_' . $this->package_slug . '_options', $db_options );
 			}
 		}
 
 		protected function save_updatepulse_options() {
-			global $wp_filesystem;
-
-			if ( ! isset( $wp_filesystem ) ) {
-				include_once ABSPATH . 'wp-admin/includes/file.php';
-
-				WP_Filesystem();
-			}
-
-			if ( ! isset( $this->json_options ) ) {
-				$updatepulse_json = $wp_filesystem->get_contents( $this->package_path . 'updatepulse.json' );
-
-				if ( $updatepulse_json ) {
-					$this->json_options = json_decode( $updatepulse_json, true );
-				}
-			}
-
-			update_option( 'updatepulse_' . $this->package_slug . '_options', $this->json_options );
+			// Options are now always stored in wp_options — no backup needed before update.
 		}
 
 		protected function restore_updatepulse_options() {
-			$updatepulse_options = get_option( 'updatepulse_' . $this->package_slug . '_options' );
-
-			if ( $updatepulse_options ) {
-				global $wp_filesystem;
-
-				if ( ! isset( $wp_filesystem ) ) {
-					include_once ABSPATH . 'wp-admin/includes/file.php';
-
-					WP_Filesystem();
-				}
-
-				$server                        = $this->get_option( 'server' );
-				$updatepulse_options['server'] = $server;
-				$updatepulse_json              = wp_json_encode(
-					$updatepulse_options,
-					JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-				);
-
-				$wp_filesystem->put_contents(
-					$this->package_path . 'updatepulse.json',
-					$updatepulse_json,
-					FS_CHMOD_FILE
-				);
-				delete_option( 'updatepulse_' . $this->package_slug . '_options' );
-			}
+			// Options are now always stored in wp_options — no restore to JSON needed.
 		}
 
 		protected function do_query_license( $query_type ) {
