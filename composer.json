@@ -1,0 +1,15 @@
+{
+    "name": "websystemspl/wordpress-update-package",
+    "description": "WordPress plugin/theme update and licensing library for UpdatePulse Server",
+    "type": "library",
+    "license": "GPL-3.0-or-later",
+    "require": {
+        "php": ">=7.4",
+        "yahnis-elsts/plugin-update-checker": "^5.3"
+    },
+    "autoload": {
+        "files": [
+            "updatepulse-updater/class-updatepulse-updater.php"
+        ]
+    }
+}
