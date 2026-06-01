@@ -1,5 +1,5 @@
 {
-    "name": "websystemspl/wordpress-update-package",
+    "name": "websystems/wordpress-update-package",
     "description": "WordPress plugin/theme update and licensing library for UpdatePulse Server",
     "type": "library",
     "license": "GPL-3.0-or-later",
